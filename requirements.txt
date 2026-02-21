@@ -5,6 +5,7 @@ soundfile
 numpy<2
 scipy
 # Kokoro dependencies
+kokoro>=0.9
 torch
 phonemizer
 transformers
