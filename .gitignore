@@ -1,0 +1,14 @@
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+.env
+*.zip
+pretrained_models/
+output/audio/
+output/tortoise_training/
+output/*.mp3
+output/*.json
+output/*.txt
+!output/scripts/
+colab_notebooks/

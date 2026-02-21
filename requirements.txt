@@ -1,0 +1,12 @@
+requests
+python-dotenv
+openai
+soundfile
+numpy<2
+scipy
+# Kokoro dependencies
+torch
+phonemizer
+transformers
+scipy
+munch
