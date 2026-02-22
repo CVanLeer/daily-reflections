@@ -12,3 +12,4 @@ output/*.json
 output/*.txt
 !output/scripts/
 colab_notebooks/
+data/reflections.db

@@ -1,61 +1,45 @@
 # Daily Reflections & Morning Radio Show
 
-**A personalized, AI-generated morning radio show that wakes you up with Stoicism, Theology, Strategy, and the News.**
+**A personalized, AI-generated morning radio show that wakes you up with faith, wisdom, strategy, and the news.**
 
-This project automatically generates a 5-minute audio monologue every morning, tailored to your interests and specific "Deep Dive" topics for the day. It combines real-time data (weather, news) with a custom LLM persona ("The Voice") and high-quality Text-to-Speech.
+This project generates a ~6 minute audio show every morning, tailored to your interests. It combines real-time data (weather, news) with a content planner (history-aware, variety-enforcing) and high-quality Text-to-Speech via ElevenLabs.
+
+---
+
+## How It Works
+
+1. **Plan** (weekly or daily): The planner analyzes past show history, selects pillars/quotes/topics, and generates content outlines. Stored in SQLite.
+2. **Generate**: The daily runner reads today's plan, fetches live weather + news, and generates a full conversational script via GPT-5.1.
+3. **Speak**: ElevenLabs produces audio using a James Earl Jones Jr. voice clone.
 
 ---
 
 ## Quick Start
 
-### 1. Generate Today's Show (Default — Voicebox JEJ Voice Clone)
-Uses **Voicebox** (Qwen3-TTS + MLX, James Earl Jones voice clone). Falls back to Kokoro if server is down.
+### 1. Plan Today's Show
 ```bash
-./run_show.sh
-```
-Output: `output/audio/daily_reflection_voicebox_[DATE].wav`
-
-### 2. Generate Show (Kokoro — Fast)
-Uses **Kokoro TTS** (82M params, runs in seconds).
-```bash
-./run_show.sh --kokoro
-./run_show.sh --kokoro --voice bf_emma  # specific voice
-```
-Output: `output/audio/daily_reflection_kokoro_[DATE].wav`
-
-### 3. Generate Show (Sesame — High Quality)
-Uses **Sesame CSM-1B** (runs in ~30-60 mins).
-```bash
-./run_show.sh --sesame
-```
-Output: `output/audio/daily_reflection_sesame_[DATE].wav`
-
-### 4. Script Only (No Audio)
-```bash
-./run_show.sh --dry-run
-```
-
----
-
-## Voicebox Setup
-
-The Voicebox backend must be running before generating audio with the default TTS.
-
-### 1. Start the Voicebox server
-```bash
-cd ~/Projects/voicebox/backend
 source venv/bin/activate
-python -m backend.main --host 127.0.0.1 --port 8000
+python -m modules.planner                    # Plan for today
+python -m modules.planner --days 7           # Plan a full week
+python -m modules.planner --date 2026-02-23  # Plan for a specific date
 ```
 
-### 2. Create the JEJ voice profile (one-time)
+### 2. Generate Show (Default — ElevenLabs JEJ Voice Clone)
 ```bash
-cd ~/Projects/daily-reflections
-source venv/bin/activate
-python scripts/setup_voicebox_profile.py
+python main.py --plan              # Script + ElevenLabs audio from plan
+python main.py --plan --dry-run    # Script only, no audio
+python main.py                     # Uses plan if available, freeform if not
 ```
+Output: `output/audio/daily_reflection_elevenlabs_[DATE].mp3`
 
-This uploads 91 James Earl Jones training clips and saves the profile ID to `.env`.
+### 3. Generate Show (Alternative TTS)
+```bash
+python main.py --kokoro                 # Kokoro (fast, local)
+python main.py --kokoro --voice bf_emma # Kokoro with specific voice
+python main.py --voicebox               # Voicebox (JEJ clone, local server)
+python main.py --dry-run                # Script only, no audio
+python main.py --input-file path.txt    # Skip LLM, use existing script
+```
 
 ---
 
@@ -63,68 +47,56 @@ This uploads 91 James Earl Jones training clips and saves the profile ID to `.en
 
 ```
 daily-reflections/
-├── main.py              # The Conductor: Orchestrates data fetching, script gen, and audio.
-├── run_show.sh          # Wrapper script to run from cron/calendar (activates venv).
-├── topics.md            # Your Interests: Core Pillars + Daily Topics.
-├── quotes.md            # Your Inspiration: Database of quotes for the Outro.
-├── .env                 # Secrets: API Keys + VOICEBOX_PROFILE_ID.
-├── requirements.txt     # Dependencies.
+├── main.py                  # Orchestrator: plan → weather/news → script → audio → history
+├── run_show.sh              # Wrapper script for automation (activates venv)
+├── .env                     # API keys (OpenAI, ElevenLabs, Voicebox)
+├── requirements.txt         # Dependencies
 ├── modules/
-│   ├── content.py       # The Brain: Generates script using OpenAI (GPT-5.1/4o).
-│   ├── news.py          # The Eyes: Fetches top US headlines.
-│   ├── weather.py       # The Skin: Fetches local weather (Chamblee, GA).
-│   ├── tts_voicebox.py  # The Mouth (Default): Voicebox/Qwen3-TTS voice clone.
-│   ├── tts_kokoro.py    # The Mouth (Fast): Kokoro 82M local TTS.
-│   └── tts_sesame.py    # The Mouth (Pro): Sesame CSM-1B high-fidelity TTS.
-├── scripts/
-│   └── setup_voicebox_profile.py  # One-time JEJ voice profile setup.
-└── output/              # Generated .txt scripts and .wav audio.
+│   ├── planner.py           # Weekly content planner (LLM-powered, history-aware)
+│   ├── db.py                # SQLite schema + queries (history, weekly_plan)
+│   ├── content.py           # Script generation (GPT-5.1)
+│   ├── tts_elevenlabs.py    # ElevenLabs API TTS (default, JEJ voice clone)
+│   ├── tts_kokoro.py        # Kokoro 82M local TTS (fast fallback)
+│   ├── tts_voicebox.py      # Voicebox/Qwen3-TTS local TTS (voice clone)
+│   ├── tts_sesame.py        # Sesame CSM-1B TTS (experimental)
+│   ├── weather.py           # Weather from Open-Meteo (Chamblee, GA)
+│   └── news.py              # Headlines from NewsAPI
+├── data/
+│   ├── reflections.db       # SQLite database (history + weekly plans)
+│   ├── show_flow.md         # Show flow guide (injected into LLM prompts)
+│   ├── quotes.md            # 230+ curated quotes
+│   ├── topics.md            # Pillar definitions + topic reference
+│   ├── cs-lewis/            # C.S. Lewis quotes and content
+│   └── jordan peterson/     # Jordan Peterson affirmations
+├── scripts/                 # Setup and utility scripts
+└── output/                  # Generated scripts (.txt) and audio (.mp3/.wav)
 ```
 
 ---
 
 ## Configuration
 
-### Changing the Vibe
-Edit `modules/content.py` to tweak the **System Prompt**. This controls the persona (currently "Marcus Aurelius hosting Lo-Fi Radio").
-
-### Changing Content
-- **Topics**: Edit `topics.md`. The system rotates through the "Deep Dive" schedule automatically (Monday=Stoicism, etc.).
-- **Quotes**: Add new quotes to `quotes.md`.
-
-### Changing Models
-- **Script**: Defaults to `gpt-5.1` (cheapest/smartest). defined in `modules/content.py`.
-- **Audio**: Defaults to `Voicebox` (JEJ voice clone). Use `--kokoro` for fast local, `--sesame` for highest quality.
-
 ### Environment Variables
 | Variable | Purpose |
 |----------|---------|
 | `OPENAI_API_KEY` | Script generation (GPT-5.1) |
-| `NEWS_API_KEY` | News headlines |
-| `VOICEBOX_URL` | Voicebox server (default: `http://localhost:8000`) |
-| `VOICEBOX_PROFILE_ID` | JEJ voice profile ID (set by setup script) |
+| `ELEVENLABS_API_KEY` | ElevenLabs TTS |
+| `ELEVENLABS_VOICE_ID` | JEJ voice clone ID (default: `DihGQaIZuuqae0qMrsGF`) |
+| `NEWS_API_KEY` | News headlines (optional) |
+| `VOICEBOX_PROFILE_ID` | Voicebox voice profile (if using `--voicebox`) |
 
----
+### Show Flow
+Edit `data/show_flow.md` to change show structure, pillar definitions, variety rules, and tone. This file is injected into both the planner and script generation prompts.
 
-## Automation (Mac)
-
-To wake up to this:
-
-1.  **Mac Schedule**:
-    - Open **Calendar.app**.
-    - Create a daily event for 5:30 AM (or 1 hour before wake up if using Sesame).
-    - **Alert**: Custom... -> Open File... -> Select `daily-reflections/run_show.sh`.
-
-2.  **iPhone Alarm**:
-    - Ensure your Mac syncs the `output/` folder to iCloud Drive (uncomment the `cp` line in `run_show.sh`).
-    - in iOS **Shortcuts App**:
-        - Automation: "When 6:00 AM" -> "Get File (icloud)" -> "Play Sound".
+### Quotes
+Add new quotes to `data/quotes.md`. The planner selects from this bank with 30-day no-repeat enforcement.
 
 ---
 
 ## Technical Notes
 
-- **Voice Cloning**: Voicebox uses Qwen3-TTS with MLX acceleration. The JEJ profile uses 91 training clips from "To Be A Drum" audiobook for voice cloning.
-- **Fallback**: If Voicebox server is unreachable, the default mode automatically falls back to Kokoro with a warning.
-- **Voice Chaining**: The Sesame TTS module uses voice chaining to ensure consistent speaker identity across chunked segments.
-- **Hardware**: Kokoro runs efficiently on any Apple Silicon Mac. Sesame requires decent RAM/GPU overhead. Voicebox benefits from MLX acceleration on Apple Silicon.
+- **Python 3.12** venv at `./venv`
+- **Database**: SQLite at `data/reflections.db` — tracks show history (pillars, quotes, topics used) and weekly plans
+- **Variety enforcement**: 14-day topic gap, 30-day quote gap, no same pillar combo two days in a row
+- **TTS fallback**: ElevenLabs → Kokoro automatic fallback if API fails
+- **Voicebox**: If using `--voicebox`, server must run on localhost:8001 (port 8000 is taken)

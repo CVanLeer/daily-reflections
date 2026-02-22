@@ -105,6 +105,83 @@ Your goal is to wake him up, orient him to the day, and provide a deep insightfu
     except Exception as e:
         return f"Error generating script: {e}"
 
+def generate_script_from_plan(plan, weather, news, model="gpt-5.1"):
+    """
+    Generate a script from a weekly plan outline.
+
+    plan dict has: pillars, deep_dive_topic, quote, quote_source,
+                   talking_points, theme_connection
+    """
+    api_key = os.getenv("OPENAI_API_KEY")
+    client = OpenAI(api_key=api_key)
+
+    today_date = datetime.now().strftime("%A, %B %d, %Y")
+
+    # Load show flow guide for system prompt
+    show_flow_path = os.path.join(os.path.dirname(__file__), "..", "data", "show_flow.md")
+    try:
+        with open(show_flow_path, "r", encoding="utf-8") as f:
+            show_flow = f.read()
+    except FileNotFoundError:
+        show_flow = ""
+
+    pillars = plan.get("pillars", [])
+    if isinstance(pillars, str):
+        pillars = [pillars]
+    pillars_str = ", ".join(pillars)
+
+    talking_points = plan.get("talking_points", [])
+    if isinstance(talking_points, str):
+        talking_points = [talking_points]
+    tp_str = "\n".join(f"  - {tp}" for tp in talking_points)
+
+    system_prompt = f"""You are "The Voice," a charismatic, deep, and thoughtful Early Morning Radio Host.
+Your listener is Chris. He is analytical, strategic, faithful, and working on himself every day.
+
+{show_flow}
+
+ABSOLUTE RULES:
+- NEVER say the words "stoicism," "stoic," "INTJ," "bio-hacking," or "recovery mindset" on-air. These are planning labels. On-air, just embody the ideas naturally. Talk about discipline without naming stoicism. Talk about building systems without saying INTJ. Talk about gratitude and staying strong without saying recovery.
+- This is a RADIO SHOW, not a monologue. It must have structure and variety in pacing.
+- The Wake-Up section MUST include SPECIFIC weather details (temperature, conditions, forecast) and SPECIFIC news headlines. Be concrete. "Fifty-eight degrees and cloudy this morning, clearing to sunshine by the afternoon, high around sixty-five." Then briefly mention 2-3 real headlines from the news provided.
+- The Wake-Up should be casual, warm, brief — about 20-30 seconds of reading time. Like turning on the radio.
+- After the Wake-Up, transition smoothly into the Pivot and Centering before the Deep Dive."""
+
+    user_prompt = f"""Context for today ({today_date}):
+- Weather: {weather}
+- News Headlines: {news}
+- Internal pillars (DO NOT mention these by name, just apply the concepts): {pillars_str}
+- Deep Dive Topic: {plan.get('deep_dive_topic', 'General Reflection')}
+- Quote of the Day: "{plan.get('quote', '')}" — {plan.get('quote_source', 'Unknown')}
+- Theme Connection: {plan.get('theme_connection', '')}
+- Talking Points:
+{tp_str}
+
+**Instructions**:
+- Follow the show structure from the flow guide EXACTLY. Each section must be present.
+- THE WAKE-UP: Start with "Good morning, Chris." Be a radio host. Give the SPECIFIC weather details — temperature, conditions, what the day looks like. Mention 2-3 actual news headlines briefly and conversationally. Keep it light, casual, warm. About 20-30 seconds of reading time.
+- THE PIVOT: Smooth transition. "But put all that aside for a second." Slow down. Breathe.
+- THE CENTERING: Faith first. A moment of stillness. Short scripture or wisdom. Quick-fire sparks from 2-3 sources (Bible, C.S. Lewis, coaches, philosophers). Not a lecture — just sparks.
+- THE DEEP DIVE: Now go deep on the main topic. This is the monologue. Use the talking points as your guide. 3-4 minutes of reading time.
+- THE OUTRO: "Now, go get after it." + Quote. Short and punctuated.
+- Do NOT use headers, segment labels, or lists. Just flow.
+- Do NOT name the pillars. Never say "stoicism" or "INTJ" or "bio-hacking." Just BE those things.
+- Write for TTS: short sentences, no acronyms, numbers as words, punctuation for pacing."""
+
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.7,
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Error generating script: {e}"
+
+
 if __name__ == "__main__":
     from dotenv import load_dotenv
     load_dotenv()
