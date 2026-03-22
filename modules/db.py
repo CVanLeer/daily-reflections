@@ -36,6 +36,7 @@ def init_db():
             talking_points TEXT,
             script_path TEXT,
             audio_path TEXT,
+            host TEXT,
             created_at TEXT DEFAULT (datetime('now'))
         );
 
@@ -55,7 +56,12 @@ def init_db():
             UNIQUE(week_start, day_date)
         );
     """)
-    conn.commit()
+    # Add host column if missing (backward compat with existing DBs)
+    try:
+        conn.execute("ALTER TABLE history ADD COLUMN host TEXT")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass  # Column already exists
     conn.close()
 
 
@@ -82,7 +88,7 @@ def get_history(days=90):
 
 def save_history(show_date, pillars, quote, quote_source=None,
                  deep_dive_topic=None, talking_points=None,
-                 script_path=None, audio_path=None):
+                 script_path=None, audio_path=None, host=None):
     """Save a show's metadata to the history table."""
     conn = _connect()
     pillars_json = json.dumps(pillars) if isinstance(pillars, list) else pillars
@@ -90,10 +96,10 @@ def save_history(show_date, pillars, quote, quote_source=None,
     conn.execute(
         """INSERT OR REPLACE INTO history
            (show_date, pillars, quote, quote_source, deep_dive_topic,
-            talking_points, script_path, audio_path)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            talking_points, script_path, audio_path, host)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (show_date, pillars_json, quote, quote_source, deep_dive_topic,
-         tp_json, script_path, audio_path)
+         tp_json, script_path, audio_path, host)
     )
     conn.commit()
     conn.close()
@@ -148,6 +154,69 @@ def mark_plan_generated(date_str):
     )
     conn.commit()
     conn.close()
+
+
+def get_recent_scripts(days=7):
+    """Read recent script files via script_path from history table."""
+    conn = _connect()
+    rows = conn.execute(
+        "SELECT show_date, script_path FROM history WHERE script_path IS NOT NULL ORDER BY show_date DESC LIMIT ?",
+        (days,)
+    ).fetchall()
+    conn.close()
+    results = []
+    for row in rows:
+        path = row["script_path"]
+        if path and os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    results.append({"date": row["show_date"], "text": f.read()})
+            except Exception:
+                pass
+    return results
+
+
+def get_recent_quotes(days=30):
+    """Return recent quotes and sources from history."""
+    conn = _connect()
+    rows = conn.execute(
+        "SELECT quote, quote_source FROM history WHERE quote IS NOT NULL ORDER BY show_date DESC LIMIT ?",
+        (days,)
+    ).fetchall()
+    conn.close()
+    return [{"quote": row["quote"], "source": row["quote_source"]} for row in rows]
+
+
+def get_recent_pillar_combos(days=14):
+    """Return parsed pillar lists from recent history."""
+    conn = _connect()
+    rows = conn.execute(
+        "SELECT show_date, pillars FROM history ORDER BY show_date DESC LIMIT ?",
+        (days,)
+    ).fetchall()
+    conn.close()
+    results = []
+    for row in rows:
+        pillars = row["pillars"]
+        if pillars:
+            try:
+                parsed = json.loads(pillars)
+                if isinstance(parsed, list):
+                    results.append({"date": row["show_date"], "pillars": parsed})
+            except (json.JSONDecodeError, TypeError):
+                pass
+    return results
+
+
+def get_recent_hosts(days=7):
+    """Return list of host names used in recent shows."""
+    conn = _connect()
+    rows = conn.execute(
+        "SELECT host FROM history WHERE host IS NOT NULL ORDER BY show_date DESC LIMIT ?",
+        (days,)
+    ).fetchall()
+    conn.close()
+    return [row["host"] for row in rows]
 
 
 if __name__ == "__main__":

@@ -62,14 +62,40 @@ def get_weather(lat=33.89, long=-84.29): # Chamblee, GA coordinates
         max_temp = daily.get('temperature_2m_max', [0])[0]
         precip = daily.get('precipitation_probability_max', [0])[0]
         
+        mood = classify_mood(temp, weather_desc)
+
         return {
             "summary": f"{weather_desc}. Current: {temp}°F. High: {max_temp}°F, Low: {min_temp}°F. Chance of Rain: {precip}%.",
             "temp": temp,
-            "condition": weather_desc
+            "condition": weather_desc,
+            "mood": mood,
         }
     except Exception as e:
         print(f"Error fetching weather: {e}")
-        return {"summary": "Weather unavailable", "temp": "N/A", "condition": "N/A"}
+        return {"summary": "Weather unavailable", "temp": "N/A", "condition": "N/A", "mood": "balanced"}
+
+
+def classify_mood(temp, condition):
+    """Classify weather into a mood for pillar selection."""
+    condition_lower = condition.lower() if condition else ""
+
+    # Storm/intense conditions
+    if any(w in condition_lower for w in ["thunderstorm", "heavy rain", "heavy snow", "hail"]):
+        return "intense"
+
+    # Rain/fog/overcast — contemplative
+    if any(w in condition_lower for w in ["rain", "drizzle", "fog", "overcast"]):
+        return "contemplative"
+
+    # Cold + clear — reflective
+    if isinstance(temp, (int, float)) and temp < 45 and "clear" in condition_lower:
+        return "reflective"
+
+    # Warm + clear — activating
+    if isinstance(temp, (int, float)) and temp >= 65 and any(w in condition_lower for w in ["clear", "sunny", "mainly clear"]):
+        return "activating"
+
+    return "balanced"
 
 if __name__ == "__main__":
     print(get_weather())

@@ -21,27 +21,211 @@ DOC:END
 """
 
 import os
+import json
 import random
 from openai import OpenAI
 from datetime import datetime
+from modules.db import get_recent_scripts, get_recent_quotes, get_recent_pillar_combos
 
-def generate_script(weather, news, deep_dive, quote, history_fact=None, model="gpt-5.1"):
+HOSTS_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "hosts.json")
+
+
+def load_host(host_name):
+    """Load a host persona from data/hosts.json. Returns dict or None."""
+    try:
+        with open(HOSTS_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        for host in data.get("hosts", []):
+            if host["name"].lower() == host_name.lower():
+                return host
+    except Exception:
+        pass
+    return None
+
+
+def _build_host_prompt(host):
+    """Build the persona section of the system prompt from a host dict."""
+    traits = ", ".join(host.get("personality_traits", []))
+    lines = [
+        f'You are "{host["name"]}," host of a personalized morning radio show.',
+        f'Backstory: {host["backstory"]}',
+        f'Your style: {traits}.',
+    ]
+    if host.get("communication_style"):
+        lines.append(f'Communication style: {host["communication_style"]}')
+    if host.get("relationship_to_chris"):
+        lines.append(f'Your relationship to the listener: {host["relationship_to_chris"]}')
+    else:
+        lines.append('Your listener is Chris. He is analytical, strategic, faithful, and working on himself every day.')
+    # Inject evolved depth from psychologist sessions
+    if host.get("core_beliefs"):
+        beliefs = "; ".join(host["core_beliefs"])
+        lines.append(f'Core beliefs that shape your perspective: {beliefs}')
+    if host.get("psychologist_notes"):
+        for note in host["psychologist_notes"]:
+            lines.append(f'Internal note: {note}')
+    if not host.get("voice_tags", False):
+        lines.append(
+            "IMPORTANT: Do NOT include voice direction tags like [sighs], [whispers], [curious], [excited], [happy], [laughs], or [exhales] in your script. "
+            "This script will be read by a TTS engine that does not support them."
+        )
+    return "\n".join(lines)
+
+def build_anti_repetition_context():
+    """Build context from recent shows to prevent repetition."""
+    context = {}
+
+    # Recent quotes to avoid
+    recent_quotes = get_recent_quotes(days=30)
+    if recent_quotes:
+        context["recent_quotes"] = recent_quotes
+
+    # Recent pillar combos to avoid
+    recent_combos = get_recent_pillar_combos(days=14)
+    if recent_combos:
+        context["recent_combos"] = recent_combos
+
+    # Recent scripts for pattern detection
+    recent_scripts = get_recent_scripts(days=5)
+    if recent_scripts:
+        # Extract key phrases and thinkers used
+        thinkers_used = set()
+        thinker_names = [
+            "Lewis", "Bonhoeffer", "Chesterton", "Merton", "Willard", "Tozer",
+            "Nouwen", "Chambers", "Keller", "Pascal", "Aurelius", "Seneca",
+            "Epictetus", "Frankl", "Taleb", "Peterson", "Jung", "James",
+            "Wooden", "Dungy", "Jackson", "Bryant", "Lombardi", "Saban",
+            "Roosevelt", "Douglass", "Berry", "Dillard"
+        ]
+        for s in recent_scripts:
+            for name in thinker_names:
+                if name.lower() in s["text"].lower():
+                    thinkers_used.add(name)
+        context["recent_thinkers"] = list(thinkers_used)
+        # Keep last 3 scripts for pattern detection (truncated)
+        context["recent_script_excerpts"] = [
+            {"date": s["date"], "excerpt": s["text"][:800]}
+            for s in recent_scripts[:3]
+        ]
+
+    return context
+
+
+def _format_anti_repetition_prompt(context):
+    """Format anti-repetition context into a prompt block."""
+    if not context:
+        return ""
+
+    parts = ["\n## ANTI-REPETITION CONTEXT (study this carefully)"]
+
+    quotes = context.get("recent_quotes", [])
+    if quotes:
+        parts.append("\n**Quotes used in last 30 days (DO NOT reuse):**")
+        for q in quotes[:10]:
+            parts.append(f'- "{q["quote"]}" — {q.get("source", "Unknown")}')
+
+    thinkers = context.get("recent_thinkers", [])
+    if thinkers:
+        parts.append(f"\n**Thinkers quoted in last 5 days (AVOID these, pick others): {', '.join(thinkers)}**")
+
+    excerpts = context.get("recent_script_excerpts", [])
+    if excerpts:
+        parts.append("\n**Recent script patterns (study for verbal tics to AVOID):**")
+        for ex in excerpts:
+            parts.append(f"--- {ex['date']} ---\n{ex['excerpt']}\n---")
+
+    # Personal context (calendar, git, open loops)
+    personal = context.get("personal_context", "")
+    if personal:
+        parts.append(f"\n{personal}")
+        parts.append("\n**When personal context is provided**: Weave in 1-2 natural references. Don't list calendar events. Let them inform the tone. If there's a big meeting, acknowledge the weight. If code was shipped, nod to momentum.")
+
+    return "\n".join(parts)
+
+
+ALL_PILLARS = [
+    "Faith / Theology", "Stoicism", "AA / Recovery", "INTJ Growth",
+    "Leadership", "Bio-hacking / Health", "Psychology", "Philosophy"
+]
+
+MOOD_AFFINITIES = {
+    "contemplative": ["Faith / Theology", "AA / Recovery", "Philosophy", "Psychology"],
+    "activating": ["Leadership", "INTJ Growth", "Bio-hacking / Health", "Stoicism"],
+    "intense": ["Stoicism", "Psychology", "Philosophy", "Leadership"],
+    "reflective": ["Faith / Theology", "Philosophy", "AA / Recovery", "Psychology"],
+    "balanced": ALL_PILLARS,
+}
+
+NEWS_KEYWORD_HINTS = {
+    "market": "INTJ Growth", "stock": "INTJ Growth", "business": "Leadership",
+    "health": "Bio-hacking / Health", "fitness": "Bio-hacking / Health",
+    "church": "Faith / Theology", "faith": "Faith / Theology",
+    "mental": "Psychology", "brain": "Psychology",
+    "leader": "Leadership", "CEO": "Leadership",
+    "philosophy": "Philosophy", "meaning": "Philosophy",
+}
+
+
+def select_pillars(weather_mood, news_summary="", recent_combos=None):
+    """Dynamically select 2-4 pillars based on mood, news, and recent history."""
+    # Start with mood-affinity pool
+    pool = list(MOOD_AFFINITIES.get(weather_mood, ALL_PILLARS))
+
+    # Boost pillars hinted by news keywords
+    news_lower = news_summary.lower() if news_summary else ""
+    boosted = set()
+    for keyword, pillar in NEWS_KEYWORD_HINTS.items():
+        if keyword in news_lower and pillar not in boosted:
+            boosted.add(pillar)
+            if pillar not in pool:
+                pool.append(pillar)
+
+    # Determine recent pillar combos to avoid
+    recent_sets = []
+    if recent_combos:
+        for combo in recent_combos[:3]:
+            recent_sets.append(set(combo.get("pillars", [])))
+
+    # Pick 2-4 pillars
+    count = random.choice([2, 2, 3, 3, 3, 4])  # Weighted toward 3
+    random.shuffle(pool)
+
+    selected = []
+    for pillar in pool:
+        if len(selected) >= count:
+            break
+        selected.append(pillar)
+
+    # Check if this combo was used in last 3 days
+    selected_set = set(selected)
+    for recent in recent_sets:
+        if selected_set == recent:
+            # Swap one pillar
+            remaining = [p for p in ALL_PILLARS if p not in selected_set]
+            if remaining:
+                selected[-1] = random.choice(remaining)
+            break
+
+    return selected
+
+
+def generate_script(weather, news, deep_dive, quote, history_fact=None, model="gpt-5.1", recent_context=None, host_name=None):
     """
     Generates the Morning Radio Show script using OpenAI.
     """
     api_key = os.getenv("OPENAI_API_KEY")
     client = OpenAI(api_key=api_key)
-    
-    # Load today's topics (In a real app, this logic would be in main.py, but passing context here)
-    # For now, we assume the prompt handles the structure instructions.
-    
+
     today_date = datetime.now().strftime("%A, %B %d, %Y")
-    
-    # Random Quote loader simulation (since we don't have the full file parser here yet)
-    # Ideally, main.py passes the specific quote.
-    
-    system_prompt = """You are "The Voice," a charismatic, deep, and thoughtful Late Night / Early Morning Radio Host.
-Your listener is Chris, an INTJ who values Stoicism, Logic, and High Agency.
+
+    # Build host persona or fall back to generic
+    host = load_host(host_name) if host_name else None
+    if host:
+        host_intro = _build_host_prompt(host)
+    else:
+        host_intro = 'You are a charismatic, deep, and thoughtful Early Morning Radio Host.\nYour listener is Chris, an INTJ who values Stoicism, Logic, and High Agency.'
+
+    system_prompt = f"""{host_intro}
 Your goal is to wake him up, orient him to the day, and provide a deep insightful spark.
 
 **CRITICAL STYLE INSTRUCTIONS:**
@@ -60,20 +244,19 @@ Your goal is to wake him up, orient him to the day, and provide a deep insightfu
 - Write for the ear, not the eye. If it sounds awkward read aloud, rewrite it.
 
 **Structure (Hidden from listener, just for flow):**
-1. **The Hook**: "Good Morning Chris." + A quick philosophical jab or question to wake him up.
+1. **The Hook**: "Good Morning Chris." + introduce yourself by name + A quick philosophical jab or question to wake him up.
 2. **The Context**: Weave Weather + News together. Don't list them. "It's gonna be a cold one in Chamblee, which fits the mood of the markets today..."
 3. **The Pivot**: "But forget the noise. Let's get our mind right."
 4. **The Pulse (Rapid Fire)**:
-   - Touch on **Faith/Theology** (God first). 
+   - Touch on **Faith/Theology** (God first).
    - Touch on **Stoicism** (Control what you can).
    - Touch on **INTJ Strategy** (Systems over goals).
    *weave these into a single narrative flow, not a list.*
 5. **The Deep Dive**: Spend 2-3 minutes riffing on the Main Topic. Connect it to the "Pulse" themes.
 6. **The Outro**: "Now, go get after it." + Quote.
-
-**Example of "Good" Flow**:
-"Good morning! First things first, let's take a moment to get our mind right and center our perspective. We put God first because He does for us what we can't do for ourselves. As C.S. Lewis said...[insert quote]. Essentially what he's saying is... so when you hit that wall today, remember that."
 """
+
+    anti_rep = _format_anti_repetition_prompt(recent_context) if recent_context else ""
 
     user_prompt = f"""
     Context for today ({today_date}):
@@ -82,7 +265,8 @@ Your goal is to wake him up, orient him to the day, and provide a deep insightfu
     - History Fact: {history_fact or "Standard day in history"}
     - Deep Dive Topic: {deep_dive}
     - Quote of the Day: {quote}
-    
+    {anti_rep}
+
     **Instructions**:
     - Start with the "Hook".
     - Smoothly transition into Weather/News.
@@ -105,7 +289,7 @@ Your goal is to wake him up, orient him to the day, and provide a deep insightfu
     except Exception as e:
         return f"Error generating script: {e}"
 
-def generate_script_from_plan(plan, weather, news, model="gpt-5.1"):
+def generate_script_from_plan(plan, weather, news, model="gpt-5.1", recent_context=None, host_name=None):
     """
     Generate a script from a weekly plan outline.
 
@@ -125,9 +309,24 @@ def generate_script_from_plan(plan, weather, news, model="gpt-5.1"):
     except FileNotFoundError:
         show_flow = ""
 
-    pillars = plan.get("pillars", [])
-    if isinstance(pillars, str):
-        pillars = [pillars]
+    # Dynamic pillar selection — override plan's pre-assigned pillars
+    plan_pillars = plan.get("pillars", [])
+    if isinstance(plan_pillars, str):
+        plan_pillars = [plan_pillars]
+
+    # Use dynamic selection if weather_mood is available, fall back to plan's pillars
+    if recent_context and recent_context.get("weather_mood"):
+        recent_combos = recent_context.get("recent_combos", [])
+        pillars = select_pillars(
+            recent_context["weather_mood"],
+            news,
+            recent_combos,
+        )
+    elif plan_pillars:
+        pillars = plan_pillars
+    else:
+        pillars = select_pillars("balanced", news)
+
     pillars_str = ", ".join(pillars)
 
     talking_points = plan.get("talking_points", [])
@@ -135,8 +334,16 @@ def generate_script_from_plan(plan, weather, news, model="gpt-5.1"):
         talking_points = [talking_points]
     tp_str = "\n".join(f"  - {tp}" for tp in talking_points)
 
-    system_prompt = f"""You are "The Voice," a charismatic, deep, and thoughtful Early Morning Radio Host.
-Your listener is Chris. He is analytical, strategic, faithful, and working on himself every day.
+    # Build host persona or fall back to generic
+    host = load_host(host_name) if host_name else None
+    if host:
+        host_intro = _build_host_prompt(host)
+    else:
+        host_intro = 'You are a charismatic, deep, and thoughtful Early Morning Radio Host.\nYour listener is Chris. He is analytical, strategic, faithful, and working on himself every day.'
+
+    name_rule = f'\n- Start the show by introducing yourself by name: "Good morning, Chris. It\'s {host["name"]}." or similar.' if host else ""
+
+    system_prompt = f"""{host_intro}
 
 {show_flow}
 
@@ -145,7 +352,7 @@ ABSOLUTE RULES:
 - This is a RADIO SHOW, not a monologue. It must have structure and variety in pacing.
 - The Wake-Up section MUST include SPECIFIC weather details (temperature, conditions, forecast) and SPECIFIC news headlines. Be concrete. "Fifty-eight degrees and cloudy this morning, clearing to sunshine by the afternoon, high around sixty-five." Then briefly mention 2-3 real headlines from the news provided.
 - The Wake-Up should be casual, warm, brief — about 20-30 seconds of reading time. Like turning on the radio.
-- After the Wake-Up, transition smoothly into the Pivot and Centering before the Deep Dive."""
+- After the Wake-Up, transition smoothly into the Pivot and Centering before the Deep Dive.{name_rule}"""
 
     user_prompt = f"""Context for today ({today_date}):
 - Weather: {weather}
@@ -160,13 +367,14 @@ ABSOLUTE RULES:
 **Instructions**:
 - Follow the show structure from the flow guide EXACTLY. Each section must be present.
 - THE WAKE-UP: Start with "Good morning, Chris." Be a radio host. Give the SPECIFIC weather details — temperature, conditions, what the day looks like. Mention 2-3 actual news headlines briefly and conversationally. Keep it light, casual, warm. About 20-30 seconds of reading time.
-- THE PIVOT: Smooth transition. "But put all that aside for a second." Slow down. Breathe.
-- THE CENTERING: Faith first. A moment of stillness. Short scripture or wisdom. Quick-fire sparks from 2-3 sources (Bible, C.S. Lewis, coaches, philosophers). Not a lecture — just sparks.
+- THE PIVOT: Smooth transition into the internal. Pick a fresh transition — NEVER use "But put all that aside for a second." Use the pivot pool from the show flow guide.
+- THE CENTERING: Faith first. A moment of stillness. Draw from the FULL thinker pool in the show flow guide. Vary the count (2-4 sources), vary the order. Don't always lead with scripture. No thinker repeated from the anti-repetition context.
 - THE DEEP DIVE: Now go deep on the main topic. This is the monologue. Use the talking points as your guide. 3-4 minutes of reading time.
 - THE OUTRO: "Now, go get after it." + Quote. Short and punctuated.
 - Do NOT use headers, segment labels, or lists. Just flow.
 - Do NOT name the pillars. Never say "stoicism" or "INTJ" or "bio-hacking." Just BE those things.
-- Write for TTS: short sentences, no acronyms, numbers as words, punctuation for pacing."""
+- Write for TTS: short sentences, no acronyms, numbers as words, punctuation for pacing.
+{_format_anti_repetition_prompt(recent_context) if recent_context else ''}"""
 
     try:
         response = client.chat.completions.create(

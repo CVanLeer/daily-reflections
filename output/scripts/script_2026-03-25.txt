@@ -1,0 +1,110 @@
+Good morning, Chris… it’s Hannah.
+
+Tell me this… would you still do what you are doing if nobody ever knew your name, but the people you led quietly flourished because you showed up well? Just sit with that for a second while your brain boots up.
+
+Alright, scene setting.  
+
+We have a gorgeous Saturday on tap. Clear sky over Atlanta, sitting right around seventy degrees right now, sliding up into the mid eighties later, then cooling back to the high fifties tonight. One percent chance of rain, which is basically weather’s way of saying, “You are good, go live your life.”
+
+The world, of course, is doing its thing. Fans are waking up to the news that Nicholas Brendon, who played Xander on Buffy the Vampire Slayer, died in his sleep at fifty four. That is one of those headlines that hits a weird nostalgia nerve, right? Like a little piece of teenage background noise just… gone. Markets had a whiplash kind of day, with the Dow jumping late after a sell off, while President Trump talks about “winding down” the Iran war. The big indexes dipped under those two hundred day lines, which is trader speak for, “Everybody is a little jumpy.”
+
+Over at the Pentagon, a federal judge just smacked down the Defense Department’s new press policy as unconstitutional, after it pushed a bunch of reporters out of the building. Closer to you, Atlanta police are on high alert with this “teen takeover” threat floating around, while Georgia drivers are wondering when the gas tax suspension is actually going to show up at the pump. And in the middle of all that, artificial intelligence is out here helping unlock geothermal energy, because of course the robots are learning how to tap the heat of the earth while we are still figuring out how to use the new coffee machine.
+
+History today is pretty standard, nothing wild, which kind of fits the vibe. The world is humming, not exploding.
+
+But forget the noise for a minute. Let us get our mind right.
+
+Here is where I want to start us. With God. There is this quiet line in Scripture that says, “Whatever you do, work at it with all your heart, as working for the Lord and not for men.” Not for the market. Not for your investors. Not for Slack. For Him. That does not mean grind yourself into dust. It means the audience of One is already pleased to be with you before you ship the thing, before the metrics, before the commit history.
+
+Then, our stoic side chimes in. Control what you can. You cannot control how people respond to your leadership. You cannot control if a team member reads your message, or a partner answers your email, or an emergency service ticket pops up at the worst time. You can control how you show up, how you speak, what you prioritize, and whether you let other people’s chaos rent space in your mind.
+
+And because your brain is wired like an INTJ command center… we know this: systems over vibes. Strategy over mood. You would rather be deep in Forge, wiring up that multi agent orchestration, refining KitchenOS security, watching those catering A B tests run, than sitting in yet another conversation about expectations or feelings. But leadership, real leadership, is a system too. It just runs on people instead of servers.
+
+So let us talk about that. How to lead when you would honestly rather be building.
+
+Here is the tension. You are a builder. Your happy place is that clean, sharp moment where you push code, promote a pipeline, or watch a Nexus card update in real time on your phone and think, “Yes. That. That is what I meant.” You shipped Forge’s initial commit yesterday. That is not small. That is you literally giving form to the thing your brain has been carrying around. And now, almost immediately, leadership taps you on the shoulder like, “Cool toy. Now shepherd the humans around it.”
+
+And part of you goes, “I did not sign up to be camp counselor. I signed up to make the thing work.”
+
+Listen. That is exactly where God tends to do His best rerouting.
+
+Leading when you would rather be building starts with this quiet, slightly annoying truth: people are the real product. The systems, the code, the data migrations, the security hardening… those are extensions of the people who run them. If you build beautiful systems on exhausted, confused, under led humans, the whole thing rots from the inside.
+
+So how do we hold both? Let me give you a frame we can actually use today.
+
+First piece. Reframe leadership as design work.  
+You are not “stuck in meetings.” You are designing an operating system… for humans.
+
+A one on one is not a distraction. It is a feedback loop.  
+A weekly standup is not ceremony. It is a heartbeat monitor.  
+A clear decision is not “being bossy.” It is latency reduction.
+
+If you think of leadership as a feature you are forced to support, you will resent it. If you think of leadership as the highest leverage design problem you have… now your builder brain has something to chew on.
+
+Second piece. Decide your minimum viable leadership.  
+You know minimum viable product. Same idea.
+
+Ask yourself, “If I could only do three leadership behaviors this week, what would give my people the most clarity and safety?” Not happiness. Safety and clarity.
+
+Maybe it looks like this.
+
+One. State the mission in one sentence, again and again.  
+For example, “Our job this week is to make sure catering data flows cleanly into Postgres so nobody has to guess what happened yesterday.” Say it so often you are tired of hearing it. That is when it is finally getting through.
+
+Two. Make one hard decision quickly each day.  
+Do we ship this now or wait. Do we cut this feature. Do we accept this risk. Leaders remove stuck points. Even a “no” is a kindness compared to endless “maybe.”
+
+Three. Close the loop with people.  
+If someone raises an issue, a bug, a concern, you do not have to solve it instantly. But you do owe them a response. “I heard you. Here is what happens next.” That alone builds huge trust.
+
+That is your minimum viable leadership system. Mission. Decisions. Closed loops.
+
+Third piece. Put your builder time on the calendar like a sacred appointment.  
+When you would rather be building, resentment creeps in because leadership feels like a thief stealing your deep work. So you have to flip that.
+
+Block real maker time. Two hours, three hours, whatever is realistic for this season. Call it “lab.” During that time, you are not the manager. You are the builder. Phone off. Slack quiet. You are in Forge world, or KitchenOS, or that data migration, whatever needs your full brain.
+
+Then, outside that window, you tell yourself, “This is leader mode. My work now is humans.” You are designing the environment where that lab time actually matters.
+
+Fourth piece. Borrow Jesus’ rhythm.  
+He did crowds. Then mountains. Then the twelve. Then the three. Then alone with the Father. It was not all one thing.
+
+For you, that might look like:
+
+Crowds: all hands, big announcements.  
+The twelve: your core team.  
+The three: your closest collaborators, the ones who can handle the unfiltered version.  
+Alone: your own soul, your own thinking time with God.
+
+If you try to live only in the crowds or only alone, you burn out in different ways. Leadership when you would rather be building is about honoring that rhythm. You can be introverted, systems minded, and still be deeply present with people. You just have to budget energy like you budget memory.
+
+Fifth piece. Remember what authority is for.  
+In the kingdom of God, authority is not permission to get your way. It is responsibility to serve. Jesus said, “Whoever wants to become great among you must be your servant.” That is not a metaphor. That is a job description.
+
+So when you are pulled into the unfun stuff… the emergency repair notice, the survey feedback, the broken script, the person who is anxious about the “teen takeover” vibes or the market or whatever… you can quietly say, “This is what authority is for. I am here to absorb some of this chaos so others do not have to carry it alone.”
+
+That does not mean you fix everything. It means you stand there, steady, so they know they are not alone.
+
+Last piece. Leading yourself like you would lead a team.  
+If you were your own manager this morning, what would you tell you?
+
+You would not say, “Hey, carry everything, answer everyone, and also write perfect code nonstop with no rest.” You would say something like, “Today, we are going to move one or two big rocks. We will accept that some things will stay open. We will communicate clearly, then shut the laptop when it is time.”
+
+So do that. Make a tiny plan.
+
+One. What is the single leadership move today that would make the week easier for future Chris? Maybe it is sending a clear update about the catering digest, or documenting the new Forge behavior so people stop guessing.
+
+Two. What is the one build task that, if done, would make you quietly proud tonight? Maybe it is tightening one part of that orchestration system, or cleaning up something in the data pipeline that has been bugging you.
+
+Three. Where will you stop? Pick a time. Do not let the day bleed into the night just because you can. You are not a server. You are a soul.
+
+You do not have to love every part of leadership to be good at it. You just have to be faithful with what is in front of you. God is not grading you on charisma. He is watching how you steward the hearts and minds He has put in your orbit.
+
+So… if today feels like a tug of war between “I want to build” and “they need me to lead,” remember this: you are building either way. You are building systems, and you are building people. One without the other will not last.
+
+Now… go get after it.
+
+Quote of the day: Carpe diem.  
+Not as a pressure statement. Not “seize the day or you are failing.” Think of it more like, “Receive the day. Take hold of the piece of it that is actually yours to carry. Leave the rest to God.”
+
+We are early in this story, you and I. But you are leading more than you know, just by the way you keep showing up.

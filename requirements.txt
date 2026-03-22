@@ -11,3 +11,6 @@ phonemizer
 transformers
 scipy
 munch
+google-cloud-texttospeech
+feedparser
+google-api-python-client

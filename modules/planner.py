@@ -119,11 +119,12 @@ Respond with valid JSON only. No markdown, no code fences."""
 
 ## Instructions
 Generate a content plan for each target date. For each day, select:
-- 2-4 pillars that fit well together (from the show flow guide)
 - A deep dive topic (specific and interesting, not generic)
 - A quote from the available quotes (exact text + attribution)
 - 3-4 talking points / angles for the script writer
-- A theme connection explaining how the pillars relate
+- A theme connection explaining the topic's core theme
+
+Do NOT assign specific pillars. Pillars will be selected dynamically at script generation time based on weather, news, and recent history.
 
 Return this exact JSON structure:
 {{
@@ -131,7 +132,7 @@ Return this exact JSON structure:
     {{
       "day_date": "YYYY-MM-DD",
       "day_of_week": "Monday",
-      "pillars": ["stoicism", "bio-hacking"],
+      "pillars": [],
       "deep_dive_topic": "Specific topic title — with a hook",
       "quote": "Exact quote text from the quotes bank",
       "quote_source": "Attribution",
@@ -140,7 +141,7 @@ Return this exact JSON structure:
         "Second talking point",
         "Third talking point"
       ],
-      "theme_connection": "How the pillars connect to each other and the topic"
+      "theme_connection": "How the topic connects to the listener's life and growth"
     }}
   ]
 }}"""

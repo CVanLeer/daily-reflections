@@ -63,7 +63,7 @@ def text_to_speech(text, output_path, voice_id=None, model="eleven_v3"):
         voice_id = os.environ.get("ELEVENLABS_VOICE_ID", DEFAULT_VOICE_ID)
 
     chunks = _chunk_text(text)
-    print(f"Generating speech via ElevenLabs (voice: {voice_id[:8]}..., {len(chunks)} chunk(s))...")
+    print(f"Generating speech via ElevenLabs (voice: {voice_id[:8]}..., key: {api_key[:8]}..., {len(chunks)} chunk(s))...")
 
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
     headers = {

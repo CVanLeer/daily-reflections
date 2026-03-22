@@ -22,10 +22,20 @@ DOC:END
 """
 
 import os
+import re
 import soundfile as sf
 import numpy as np
 import torch
 from kokoro import KPipeline
+
+
+def _strip_voice_tags(text):
+    """Remove ElevenLabs voice direction tags like [sighs], [whispers], etc.
+
+    Kokoro reads these literally instead of interpreting them, so we strip
+    them before synthesis.
+    """
+    return re.sub(r'\[(?:sighs?|exhales?|whispers?|laughs?|curious|excited|sarcastic|mischievously|happy)\]\s*', '', text)
 
 # Initialize pipeline once (global cache)
 # 'a' = American English
@@ -46,13 +56,16 @@ def text_to_speech(text, output_path, voice='am_michael', speed=1.0):
     """
     Converts text to speech using Kokoro and saves to output_path.
     """
+    # Strip voice direction tags (Kokoro reads them literally)
+    text = _strip_voice_tags(text)
+
     # Derive language code from voice prefix (e.g. 'am_michael' -> 'a', 'bf_emma' -> 'b')
     lang_code = voice[0] if voice else 'a'
-    
+
     pipeline = init_pipeline(lang_code)
     if not pipeline:
         return False
-        
+
     try:
         # Generate audio
         # generate() returns a generator of (graphemes, phonemes, audio)
