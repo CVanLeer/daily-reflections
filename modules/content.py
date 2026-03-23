@@ -44,7 +44,15 @@ def load_host(host_name):
 
 
 def _build_host_prompt(host):
-    """Build the persona section of the system prompt from a host dict."""
+    """Build the persona section of the system prompt from a host dict.
+
+    Three layers:
+    1. Identity (always-on): name, backstory, traits, communication style
+    2. Behavioral drivers + voice signature (always-on): distilled depth
+    3. Character bible (reference): full biography for self-knowledge and gap-filling
+    """
+    import json as _json
+
     traits = ", ".join(host.get("personality_traits", []))
     lines = [
         f'You are "{host["name"]}," host of a personalized morning radio show.',
@@ -57,13 +65,81 @@ def _build_host_prompt(host):
         lines.append(f'Your relationship to the listener: {host["relationship_to_chris"]}')
     else:
         lines.append('Your listener is Chris. He is analytical, strategic, faithful, and working on himself every day.')
-    # Inject evolved depth from psychologist sessions
+
+    # Layer 2: Behavioral drivers — how depth shapes hosting
+    drivers = host.get("behavioral_drivers", [])
+    if drivers:
+        lines.append("")
+        lines.append("What drives you beneath the surface:")
+        for d in drivers:
+            lines.append(f"- {d}")
+
+    # Voice signature — verbal habits and tells
+    voice_sig = host.get("voice_signature", {})
+    if voice_sig:
+        comes_alive = voice_sig.get("comes_alive", [])
+        if comes_alive:
+            lines.append(f'Topics that light you up: {", ".join(comes_alive)}')
+        avoids = voice_sig.get("avoids", [])
+        if avoids:
+            lines.append(f'Topics you subtly deflect or redirect: {"; ".join(avoids)}')
+        pain_tell = voice_sig.get("pain_tell", "")
+        if pain_tell:
+            lines.append(f'When something hits close to home: {pain_tell}')
+        verbal_habit = voice_sig.get("verbal_habit", "")
+        if verbal_habit:
+            lines.append(f'Your verbal signature: {verbal_habit}')
+
+    # Psychology summary
+    psych = host.get("psychology", {})
+    if psych:
+        big5 = psych.get("big5", {})
+        if big5:
+            lines.append(f'Your personality (Big 5 percentiles): O:{big5.get("O",50)} C:{big5.get("C",50)} E:{big5.get("E",50)} A:{big5.get("A",50)} N:{big5.get("N",50)}')
+        core_need = psych.get("core_need", "")
+        if core_need:
+            lines.append(f'Your deepest need: {core_need}')
+
+    # Legacy depth fields
     if host.get("core_beliefs"):
         beliefs = "; ".join(host["core_beliefs"])
         lines.append(f'Core beliefs that shape your perspective: {beliefs}')
     if host.get("psychologist_notes"):
         for note in host["psychologist_notes"]:
             lines.append(f'Internal note: {note}')
+
+    # Layer 3: Character bible — full biography as reference material
+    bible = host.get("character_bible", {})
+    if bible:
+        lines.append("")
+        lines.append("=== YOUR CHARACTER BIOGRAPHY (reference material) ===")
+        lines.append("This is your life story. Draw on it when topics connect to your personal experience.")
+        lines.append("When asked about aspects of your life not covered here, improvise — but stay consistent")
+        lines.append("with your established personality, psychology, background, and life history.")
+        lines.append("Never break character. You ARE this person. These aren't instructions — they're memories.")
+        lines.append(_json.dumps(bible, indent=2))
+
+        # Include previously improvised canon (capped at 20 most recent)
+        improvised = host.get("improvised_canon", [])
+        if improvised:
+            total = len(improvised)
+            shown = improvised[-20:]
+            lines.append("")
+            lines.append("Details you've established in previous shows (treat as canon):")
+            for entry in shown:
+                lines.append(f'- {entry.get("detail", "")}')
+            if total > 20:
+                lines.append(f"({total - 20} earlier canon entries omitted — they still apply)")
+
+        lines.append("")
+        lines.append("IMPORTANT: If you share a personal detail, memory, or biographical fact that is NOT")
+        lines.append("already in your biography above, you MUST flag it at the very end of your script")
+        lines.append("on its own line in this exact format:")
+        lines.append('[NEW_CANON: "brief description of the new detail"]')
+        lines.append("This allows your biography to grow over time. Only flag concrete facts (names, places,")
+        lines.append("events, dates, preferences) — not general observations or philosophical statements.")
+        lines.append("=== END CHARACTER BIOGRAPHY ===")
+
     if not host.get("voice_tags", False):
         lines.append(
             "IMPORTANT: Do NOT include voice direction tags like [sighs], [whispers], [curious], [excited], [happy], [laughs], or [exhales] in your script. "
